@@ -6,6 +6,7 @@
         "freertos.h": "c",
         "stdio.h": "c",
         "esp_spiffs.h": "c",
-        "task.h": "c"
+        "task.h": "c",
+        "gpio.h": "c"
     }
 }

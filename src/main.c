@@ -7,6 +7,9 @@
 #include "freertos/task.h"
 #include "esp_spiffs.h"
 
+#include "driver/gpio.h"
+
+#define LED_AZUL_GPIO GPIO_NUM_2  // Cambia esto al pin correcto para tu placa
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,7 +46,6 @@ audio_data_t audio_verde;
 static const char *TAG = "DAC_LOOP";
 static dac_oneshot_handle_t dac_handle;
 
-
 static volatile size_t play_index = 0;
 
 // ISR del timer
@@ -73,7 +75,13 @@ static void IRAM_ATTR timer_isr(void *arg)
     if (play_index >= size) play_index = 0;
 
     // Reproducir muestra
+
+
+    gpio_set_level(LED_AZUL_GPIO, 1);  // Nivel alto = encender 
     dac_oneshot_output_voltage(dac_handle, data[play_index]);
+    gpio_set_level(LED_AZUL_GPIO, 0);  // Nivel alto = encender
+
+
     play_index++;
 }
 
@@ -218,6 +226,10 @@ int parse_input() {
 
 }
 
+
+
+
+
 void app_main(void)
 {
     init_spiffs();
@@ -225,6 +237,8 @@ void app_main(void)
 
     esp_err_t err1 = load_wav_to_ram(&audio_rojo, "/spiffs/Alarma01_8k.wav");
     esp_err_t err2 = load_wav_to_ram(&audio_verde, "/spiffs/Alarma02_8k.wav");
+    gpio_reset_pin(LED_AZUL_GPIO);
+    gpio_set_direction(LED_AZUL_GPIO, GPIO_MODE_OUTPUT);
 
     if (err1 == ESP_OK && err2 == ESP_OK) {
         printf("Audio rojo cargado: %d bytes\n", audio_rojo.size);
