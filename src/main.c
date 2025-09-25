@@ -19,7 +19,7 @@
 
 
 
-#define TIMER_INTERVAL_US 125  // 8kHz
+#define TIMER_INTERVAL_US 22  // 8kHz
 #define WAV_FILE_PATH "/spiffs/IntPointVar.wav"
 
 
@@ -237,7 +237,7 @@ void app_main(void)
     }
     //Se tiene que iniciar el timer despues de cargar los archivos, si no
     //la interrupcion crashea el programa 
-    
+
     init_timer() ;  
     vTaskDelay(1000);
     //while(true){vTaskDelay(1000);}
