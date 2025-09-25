@@ -1,0 +1,68 @@
+Para cargar archivos a la FLASH:
+    pio run --target uploadfs
+
+
+
+
+
+#include <stdio.h>
+#include "driver/dac_oneshot.h"
+#include "esp_log.h"
+#include "esp_rom_sys.h"
+
+
+static const char *TAG = "DAC_ONESHOT_EXAMPLE";
+
+// Número de muestras y frecuencia deseada
+#define SAMPLE_COUNT 256
+#define WAVE_FREQ_HZ 100  // Frecuencia de la onda de salida (Hz)
+#define SAMPLE_RATE_HZ 16000  // Tasa de muestreo
+#define N 32
+
+const uint8_t sine_samples[N] = {
+    128, 153, 177, 198, 218, 233, 245, 252,
+    255, 252, 245, 233, 218, 198, 177, 153,
+    128, 102,  78,  57,  37,  22,  10,   3,
+      0,   3,  10,  22,  37,  57,  78, 102
+};
+
+
+void app_main(void)
+{
+    esp_err_t ret;  
+    
+    // Configurar canal DAC (GPIO25 es DAC_CHAN_0)
+    dac_oneshot_handle_t dac_handle;
+    dac_oneshot_config_t dac_config = {
+        .chan_id = DAC_CHAN_0  // DAC_CHAN_0 = GPIO25
+    };
+
+
+    ret = dac_oneshot_new_channel(&dac_config, &dac_handle);
+    if (ret != ESP_OK) {
+        ESP_LOGE("DAC", "Error creando canal DAC: %s", esp_err_to_name(ret));
+        return;
+    }
+
+       // Valor a escribir (0 - 255) → ~0V - 3.3V
+    uint8_t dac_value = 128;  // ~1.65V
+
+    while(true){
+
+        for (int i = 0; i < N; i++) {
+            dac_oneshot_output_voltage(dac_handle, sine_samples[i]);
+            esp_rom_delay_us(300);  // 1 ms de retardo bloqueante
+        }
+
+    }
+
+    if (ret != ESP_OK) {
+        ESP_LOGE("DAC", "Error escribiendo valor DAC: %s", esp_err_to_name(ret));
+        return;
+    }
+
+    ESP_LOGI("DAC", "Se escribió valor %d en GPIO25 (DAC_CHAN_0)", dac_value);
+
+
+}
+

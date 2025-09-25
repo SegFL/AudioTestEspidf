@@ -1,0 +1,11 @@
+{
+    "files.associations": {
+        "i2s.h": "c",
+        "i2s_std.h": "c",
+        "dirent.h": "c",
+        "freertos.h": "c",
+        "stdio.h": "c",
+        "esp_spiffs.h": "c",
+        "task.h": "c"
+    }
+}
