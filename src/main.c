@@ -6,6 +6,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_spiffs.h"
+#include "driver/i2s.h"
 
 #include "driver/gpio.h"
 
@@ -225,12 +226,138 @@ int parse_input() {
 
 
 }
+ void initDacDma(){
+
+    i2s_config_t i2s_config = {
+        .mode = I2S_MODE_MASTER | I2S_MODE_TX | I2S_MODE_DAC_BUILT_IN,
+        .sample_rate = 8000,
+        .bits_per_sample = I2S_BITS_PER_SAMPLE_16BIT,
+        .channel_format = I2S_CHANNEL_FMT_ONLY_RIGHT,  // o LEFT GPIO ??
+        .communication_format = I2S_COMM_FORMAT_I2S_MSB,
+        .intr_alloc_flags = 0,
+        .dma_buf_count = 4,
+        .dma_buf_len = 256,
+        .use_apll = false,
+        .tx_desc_auto_clear = true
+    };
+    i2s_set_clk(I2S_NUM_0, 8000, I2S_BITS_PER_SAMPLE_16BIT, I2S_CHANNEL_MONO);
+
+    i2s_driver_install(I2S_NUM_0, &i2s_config, 0, NULL);
+    i2s_set_dac_mode(I2S_DAC_CHANNEL_RIGHT_EN);  // DAC interno: GPIO25
+
+
+ }
+
+
+void app_main(void){
+    init_spiffs();
+    //Leo lso archivos
+    esp_err_t err1 = load_wav_to_ram(&audio_rojo, "/spiffs/Alarma01_8k.wav");
+    esp_err_t err2 = load_wav_to_ram(&audio_verde, "/spiffs/Alarma02_8k.wav");
+    gpio_reset_pin(LED_AZUL_GPIO);
+    gpio_set_direction(LED_AZUL_GPIO, GPIO_MODE_OUTPUT);
+    initDacDma();
+    if (err1 == ESP_OK && err2 == ESP_OK) {
+        printf("Audio rojo cargado: %d bytes\n", audio_rojo.size);
+        printf("Audio verde cargado: %d bytes\n", audio_verde.size);
+
+        // Usar audio_rojo.data y audio_verde.data para reproducir
+
+    } else {
+        printf("Error cargando uno o ambos audios.\n");
+    }
+    //Se tiene que iniciar el timer despues de cargar los archivos, si no
+    //la interrupcion crashea el programa 
+
+
+
+    //I2S necesita datos de 16bits por lo que se ponen los 8bits de audio en los mas significativos
+    uint16_t *i2s_rojo_data = malloc(audio_rojo.size * sizeof(uint16_t));
+    uint16_t *i2s_verde_data = malloc(audio_verde.size * sizeof(uint16_t));
+
+    for (int i = 0; i < audio_rojo.size; i++) {
+        i2s_rojo_data[i] = ((uint16_t)audio_rojo.data[i]) << 8;
+    }
+
+    for (int i = 0; i < audio_verde.size; i++) {
+        i2s_verde_data[i] = ((uint16_t)audio_verde.data[i]) << 8;
+    }
+ 
+    size_t pos=0;
+
+    
+    while(1){
+
+        // Reproducir una vez y se queda trabado hasta que temrine
+        size_t bytes_written = 0;
+        esp_err_t ret;
+
+
+        int resultado = parse_input();
+
+
+        if(audio_cargado==false){
+            ESP_LOGE(TAG, "Cambiando audio:");
+            switch(resultado){
+                case ROJO:
+                    play_index=0;//Reinicio el audio o sea arranco desde el 0
+                    audio_actual=ROJO;
+                    audio_cargado=true;
+                    ESP_LOGE(TAG, "ROJO");
+                    break;
+                case VERDE:
+                    play_index=0;//Reinicio el audio o sea arranco desde el 0
+                    audio_actual=VERDE;
+                    audio_cargado=true;
+                    ESP_LOGE(TAG, "VERDE");
+                    break;
+                default:
+                    audio_actual=AMARILLO;
+                    audio_cargado=true;
+                    ESP_LOGE(TAG, "AMARILLO(DEFAULT)");
+                    break;
+            }
+        }
+
+    
+
+ 
+        switch(audio_actual){
+
+            case ROJO:
+                gpio_set_level(LED_AZUL_GPIO, 1);  // Nivel alto = encender 
+                size_t bytes_left = (audio_rojo.size * sizeof(uint16_t)) - pos;
+                size_t bytes_written = 0;
+                esp_err_t ret = i2s_write(I2S_NUM_0, &i2s_rojo_data[pos / 2], bytes_left, &bytes_written, 0);
+                pos += bytes_written;
+                if (pos >= audio_rojo.size * sizeof(uint16_t)) pos = 0;
+
+                gpio_set_level(LED_AZUL_GPIO, 0);  // Nivel alto = encender
+
+                break;
+
+            case VERDE:
+                ret = i2s_write(I2S_NUM_0, i2s_verde_data, audio_verde.size * sizeof(uint16_t), &bytes_written, portMAX_DELAY);
+                break;
+            default:
+                break;
+
+
+        }
+        vTaskDelay(1);
+
+    }
+    
 
 
 
 
 
-void app_main(void)
+}
+/*
+
+//Main para el modo con dac one shot
+void app_main2(void)
 {
     init_spiffs();
     init_dac();
@@ -294,3 +421,4 @@ void app_main(void)
 }
 
 
+*/
