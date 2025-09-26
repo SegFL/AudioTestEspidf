@@ -1,4 +1,19 @@
-Para cargar archivos a la FLASH:
+
+
+##Funcionalidad:
+
+repreduzco audios cargados en la memoria spiffs del esp32. Los audios deben ser mono de 8khz aunque despues se pueden reproducir a cualquier frecuencia
+Se probo a 8khz y a 44khz.
+
+Existen 2 mains en este codigo, uno es usando dac one shot que convierte los valores leidos de los audios a señales analogicas con el GPIO25(PIN 24) 
+mediante una interrupcion de 22us( frecuencia de muestreo). Esto resulta en 18us/22us de tiempo llibvre del cpu=72% de tiempo.
+
+El modo usando i2s+dma carga de forma ciclica el buffer de dma en una itnerrupcion de 10ms y tarda aproximadamente 16us. lo que resulta 
+en un uso del 0.16% del CPU
+
+
+
+Para cargar archivos que esten en la carpeta data en la FLASH:
     pio run --target uploadfs
 
 
